@@ -67,7 +67,7 @@ def get_cifar10(root, l_samples, u_samples, transform_train=transform_train, tra
     print (f"#Labeled: {len(train_labeled_idxs)} #Unlabeled: {len(train_unlabeled_idxs)}")
     return train_labeled_dataset, train_unlabeled_dataset, test_dataset
 
-def get_cifar10_dist(root, l_samples, u_samples, transform_train=transform_train, transform_strong=transform_strong,
+def get_cifar10_test(root, l_samples, u_samples, transform_train=transform_train, transform_strong=transform_strong,
                  transform_val=transform_val, download=True):
     base_dataset = torchvision.datasets.CIFAR10(root, train=True, download=download)
     # print('lsamples={}, usamples={}'.format(l_samples, u_samples))
