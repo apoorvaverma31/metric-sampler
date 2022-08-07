@@ -1,6 +1,6 @@
 import numpy as np
 from PIL import Image
-
+import matplotlib.pyplot as plt
 import torchvision
 from torchvision.transforms import transforms
 from RandAugment import RandAugment
@@ -60,7 +60,7 @@ def get_cifar10(root, l_samples, u_samples, transform_train=transform_train, tra
 
 
     train_labeled_dataset = CIFAR10_labeled(root, train_labeled_idxs, train=True, transform=transform_strong) 
-    train_unlabeled_dataset = CIFAR10_labeled(root, train_unlabeled_idxs, train=True, transform=transform_strong) 
+    train_unlabeled_dataset = CIFAR10_unlabeled(root, train_unlabeled_idxs, train=True, transform=transform_strong) 
     
     test_dataset = CIFAR10_labeled(root, train=False, transform=transform_val, download=False)
 
@@ -124,3 +124,24 @@ class CIFAR10_unlabeled(CIFAR10_labeled):
                  download=download)
         self.targets = np.array([-1 for i in range(len(self.targets))])
 
+def make_imb_data(max_num, class_num, gamma, inv=False, bal=False):
+    print('max_num={}'.format(max_num))
+    mu = np.power(1/gamma, 1/(class_num - 1))
+    class_num_list = []
+    for i in range(class_num):
+        if(inv):
+            class_num_list.append(int(max_num * np.power(mu, class_num-i-1)))
+        else:
+            class_num_list.append(int(max_num * np.power(mu, i)))
+    if(bal):
+        per_class = sum(class_num_list)/class_num
+        class_num_list = [int(per_class) for i in range(class_num)]
+    print(class_num_list)
+    return list(class_num_list)
+
+def plot_distribution(counter_class):
+    names = list(counter_class.keys())
+    values = list(counter_class.values())
+
+    plt.bar(names, values, tick_label=names)
+    plt.show()

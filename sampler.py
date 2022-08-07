@@ -10,7 +10,7 @@ class UnlabeledDatasetCollate(Dataset):
     Class for collating the pseudo label-image pairs after target-distribution dependent sampling
     Returns a dataset object that can be passed into a dataloader directly
     """
-    def __init__(self, labels_list, images_list, labeled_prior, transform=None, target_transform=None):
+    def __init__(self, labels_list, images_list, transform=None, target_transform=None):
         """
         Args:
             labels_list (list): list of labels obtained after sampling
@@ -20,7 +20,6 @@ class UnlabeledDatasetCollate(Dataset):
         """
         self.labels_list = labels_list
         self.images_list = images_list
-        self.labeled_prior = labeled_prior
         self.transform = transform
         self.target_transform = target_transform
 
@@ -39,19 +38,27 @@ class UnlabeledDatasetCollate(Dataset):
 
 class UnlabeledDataLoader():
 
-    def __init__(self, ulb_dataset, model, target_dist, batch_size):
+    def __init__(self, ulb_dataset, model, target_dist, labeled_prior, batch_size):
         super(UnlabeledDataLoader, self).__init__()
+        
         self.model = model
         self.ulb_dataset = ulb_dataset
         self.target_dist = target_dist
         self.batch_size = batch_size
+        self.labeled_prior = labeled_prior
         self.pseudo_labels = self.gen_pl()
+        self.ulb_dataset.targets = self.pseudo_labels
     
     def gen_pl(self):
         list_labels = []
         ulb_loader = torch.utils.data.DataLoader(self.ulb_dataset, batch_size= 128, num_workers=8, shuffle=True)
-        for img in ulb_loader:
-            list_labels.append(self.model(img).numpy().flatten())
+        for img, _, _ in ulb_loader:
+            img = img.cuda()
+            self.model.eval()
+            pred, _ = self.model(img)
+            pred = torch.argmax(pred, dim=1)
+            list_labels.append(pred.cpu().numpy().flatten())
+        list_labels = np.concatenate(list_labels).ravel().tolist()
         return list_labels
             
     def get_loaders(self):
@@ -68,7 +75,7 @@ class UnlabeledDataLoader():
         """
         loader_dict = {}
         for i in range(self.target_dist.shape[0]):
-            pl_weights = self.get_weights(self.pseudo_labels, i, self.target_dist)
+            pl_weights = self.get_weights(i)
             sampler = torch.utils.data.WeightedRandomSampler(weights= pl_weights, num_samples = len(self.pseudo_labels), replacement = True)
             loader = torch.utils.data.DataLoader(self.ulb_dataset, batch_size=None, num_workers=8, sampler=sampler)
             loader_dict.update({f"{i}":loader})
@@ -105,7 +112,7 @@ class UnlabeledDataLoader():
         """
         sl_list = []
         image_list = []
-        loaders = self.get_loaders(self.ulb_dataset, len(self.ulb_dataset.classes), self.pseudo_labels, self.target_dist)
+        loaders = self.get_loaders()
         for i in labels:
             image , sampled_label, _ = next(iter(loaders[f'{i}']))
             sl_list.append(int(sampled_label)) 
@@ -116,4 +123,4 @@ class UnlabeledDataLoader():
         return img, lbl_ulb
 
 if(__name__=="__main__"):
-    print('main')
+    print('work in progress')
