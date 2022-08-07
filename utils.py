@@ -67,6 +67,22 @@ def get_cifar10(root, l_samples, u_samples, transform_train=transform_train, tra
     print (f"#Labeled: {len(train_labeled_idxs)} #Unlabeled: {len(train_unlabeled_idxs)}")
     return train_labeled_dataset, train_unlabeled_dataset, test_dataset
 
+def get_cifar10_dist(root, l_samples, u_samples, transform_train=transform_train, transform_strong=transform_strong,
+                 transform_val=transform_val, download=True):
+    base_dataset = torchvision.datasets.CIFAR10(root, train=True, download=download)
+    # print('lsamples={}, usamples={}'.format(l_samples, u_samples))
+    train_labeled_idxs, train_unlabeled_idxs = train_split(base_dataset.targets, l_samples, u_samples, True)
+
+
+    train_labeled_dataset = CIFAR10_labeled(root, train_labeled_idxs, train=True, transform=transform_strong) 
+    train_unlabeled_dataset = CIFAR10_labeled(root, train_unlabeled_idxs, train=True, transform=transform_strong) 
+    
+    test_dataset = CIFAR10_labeled(root, train=False, transform=transform_val, download=False)
+
+    print (f"#Labeled: {len(train_labeled_idxs)} #Unlabeled: {len(train_unlabeled_idxs)}")
+    return train_labeled_dataset, train_unlabeled_dataset, test_dataset
+
+
 def train_split(labels, n_labeled_per_class, n_unlabeled_per_class, fix=False):
     labels = np.array(labels)
     train_labeled_idxs = []
