@@ -4,6 +4,7 @@ import utils
 from torch.utils.data import Dataset
 from collections import Counter
 import matplotlib.pyplot as plt
+import time
 
 class UnlabeledDatasetCollate(Dataset):
     """
@@ -48,6 +49,7 @@ class UnlabeledDataLoader():
         self.labeled_prior = labeled_prior
         self.pseudo_labels = self.gen_pl()
         self.ulb_dataset.targets = self.pseudo_labels
+        self.loaders = self.get_loaders()
     
     def gen_pl(self):
         list_labels = []
@@ -78,7 +80,7 @@ class UnlabeledDataLoader():
             pl_weights = self.get_weights(i)
             sampler = torch.utils.data.WeightedRandomSampler(weights= pl_weights, num_samples = len(self.pseudo_labels), replacement = True)
             loader = torch.utils.data.DataLoader(self.ulb_dataset, batch_size=None, num_workers=8, sampler=sampler)
-            loader_dict.update({f"{i}":loader})
+            loader_dict.update({f"{i}":iter(loader)})
         return loader_dict
 
         
@@ -112,15 +114,19 @@ class UnlabeledDataLoader():
         """
         sl_list = []
         image_list = []
-        loaders = self.get_loaders()
+        # t1 = time.time()
         for i in labels:
-            image , sampled_label, _ = next(iter(loaders[f'{i}']))
+            image , sampled_label, _ = next(self.loaders[f'{i}'])
             sl_list.append(int(sampled_label)) 
             image_list.append(image)
-        ulb_dataset_sampled = UnlabeledDatasetCollate(sl_list, image_list)
-        ulb_loader = torch.utils.data.DataLoader(ulb_dataset_sampled, batch_size=128, num_workers=8, shuffle=True)
-        img, lbl_ulb = next(iter(ulb_loader))
-        return img, lbl_ulb
+        t2 = time.time()
+        sl_list = torch.tensor(sl_list)
+        image_list = torch.stack(image_list)
+        # t3 = time.time()
+
+        # print(t3-t2, t2-t1)
+    
+        return image_list, sl_list
 
 if(__name__=="__main__"):
     print('work in progress')
